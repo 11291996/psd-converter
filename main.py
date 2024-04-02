@@ -57,12 +57,16 @@ with gr.Blocks(title="PSD Converter") as demo:
     # PSD Pipeline
     """
     )
-    path_box = gr.Textbox(label="enter path", value="/home/paneah/auto_clipimage_conversion/test_data/weapon.psd")
+    path_box = gr.Textbox(label="enter path of a psd file or a folder with psd files only", value="/home/paneah/auto_clipimage_conversion/test_data/test_folder/")
     def create_json(path):
         #get the path
         global psd_path, psd_bbox
-        psd_path = path
-        psd = PSDImage.open(path)
+        if path.endswith(".psd"):
+            psd_path = path
+            psd = PSDImage.open(path)
+        else:
+            psd_path = [path + item for item in os.listdir(path)]
+            psd = PSDImage.open(psd_path[0])
         psd_bbox = psd.bbox
         layer_tree = get_layer_tree(psd)
         layer_dict = {}
@@ -83,21 +87,28 @@ with gr.Blocks(title="PSD Converter") as demo:
     button = gr.Button("Load PSD")
     button.click(create_json, inputs=path_box)
     checkboxes, checkbox_list = create_blocks_path(temp_path)
-    pixel_layers = get_pixel_layers_path(psd_path)
-    pixel_layers = pixel_layers[::-1]
     button2 = gr.Button("Convert")
     status = gr.Textbox(label="status of convert")
-    def extract_layers(*checkbox_list):
-        selected_layers = [layer for layer, selected in zip(pixel_layers, checkbox_list) if selected]
-        composite_images = []
-        for layer in selected_layers:
-            image = layer.composite(psd_bbox)
-            composite_images.append(image)
-        for image in composite_images[1:]:
-            composite_images[0].paste(image, (0, 0), image)
-        composite_images[0].save("./temp/output.png")
-        return "convert done"
 
+    def composite_images(psd_path, checkbox_list, idx):
+        pixel_layers = get_pixel_layers_path(psd_path)
+        pixel_layers = pixel_layers[::-1]
+        selected_layers = [layer for layer, selected in zip(pixel_layers, checkbox_list) if selected]
+        composite_images_list = []
+        for layer in selected_layers:
+            image = layer.compose(psd_bbox)
+            composite_images_list.append(image)
+        for image in composite_images_list[1:]:
+            composite_images_list[0].paste(image, (0, 0), image)
+        composite_images_list[0].save(f"./temp/output{idx}.png")
+
+    def extract_layers(*checkbox_list):
+        if isinstance(psd_path, list):
+            for idx, psd in enumerate(psd_path):
+                composite_images(psd, checkbox_list, idx)
+        elif isinstance(psd_path, str):
+            composite_images(psd_path, checkbox_list, 0)
+        return "convert done"
     button2.click(extract_layers, inputs=checkbox_list, outputs=status, concurrency_limit=1, show_progress=True)
 
 if __name__ == "__main__":
