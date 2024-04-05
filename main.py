@@ -36,7 +36,7 @@ def create_blocks_path(path):
         check_box_list = create_blocks(layer_list)
     return check_boxes, check_box_list
 
-def get_pixel_layers_path(psd_path):
+def get_pixel_layers_path(psd_path: str) -> list:
     psd = PSDImage.open(psd_path)
     return get_pixel_layers(psd)
     
@@ -90,7 +90,7 @@ with gr.Blocks(title="PSD Converter") as demo:
     button2 = gr.Button("Convert")
     status = gr.Textbox(label="status of convert")
 
-    def composite_images(psd_path, checkbox_list, idx):
+    def composite_images_first(psd_path: str, checkbox_list: list, idx: int):
         pixel_layers = get_pixel_layers_path(psd_path)
         pixel_layers = pixel_layers[::-1]
         selected_layers = [layer for layer, selected in zip(pixel_layers, checkbox_list) if selected]
@@ -101,14 +101,33 @@ with gr.Blocks(title="PSD Converter") as demo:
         for image in composite_images_list[1:]:
             composite_images_list[0].paste(image, (0, 0), image)
         composite_images_list[0].save(f"./temp/output{idx}.png")
+        return selected_layers
+    
+    def composite_from_first(psd_path:str, selected_layers: list, idx: int):
+        pixel_layers = get_pixel_layers_path(psd_path)
+        pixel_layers = pixel_layers[::-1]
+        composite_images_list = []
+        for selected_layer in selected_layers:
+            for layer in pixel_layers:
+                if layer.name == selected_layer.name and layer.parent.name == selected_layer.parent.name:
+                    composite_images_list.append(layer.compose(psd_bbox))
+        for image in composite_images_list[1:]:
+            composite_images_list[0].paste(image, (0, 0), image)
+        image = composite_images_list[0]
+        image.save(f"./temp/output{idx}.png")
 
     def extract_layers(*checkbox_list):
+        global psd_path
         if isinstance(psd_path, list):
-            for idx, psd in enumerate(psd_path):
-                composite_images(psd, checkbox_list, idx)
+            for idx, psd_path in enumerate(psd_path):
+                if idx == 0:
+                    selected_layers = composite_images_first(psd_path, checkbox_list, idx)
+                else:
+                    composite_from_first(psd_path, selected_layers, idx)
         elif isinstance(psd_path, str):
-            composite_images(psd_path, checkbox_list, 0)
+            composite_images_first(psd_path, checkbox_list, 0)
         return "convert done"
+    
     button2.click(extract_layers, inputs=checkbox_list, outputs=status, concurrency_limit=1, show_progress=True)
 
 if __name__ == "__main__":
