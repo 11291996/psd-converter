@@ -15,25 +15,24 @@ def get_layer_tree(psd: PSDImage) -> list:
             layer_tree.append(layer.name)
     return layer_tree
 
-checkbox_list = []
-
-def create_blocks(layer_list):
+def create_blocks(layer_list, checkbox_list: list):
     for layer in layer_list:
         if isinstance(layer, str):
             checkbox_list.append(gr.Checkbox(label=layer))
         elif isinstance(layer[1], list):
             with gr.Accordion(label=layer[0], open=False):
-                create_blocks(layer[1])
+                create_blocks(layer[1], checkbox_list)
         else:
             checkbox_list.append(gr.Checkbox(label=layer[0]))
     return checkbox_list
 
-def create_blocks_path(path):
+def create_blocks_path(path, block_title: str):
+    checkbox_list = []
     with open(path, "r", encoding="UTF-8-sig") as f:
         dict = json.load(f)
     layer_list = [list(item) for item in dict.items()]
-    with gr.Accordion("layer check boxes", open=False) as check_boxes:
-        check_box_list = create_blocks(layer_list)
+    with gr.Accordion(block_title, open=False) as check_boxes:
+        check_box_list = create_blocks(layer_list, checkbox_list)
     return check_boxes, check_box_list
 
 def get_pixel_layers_path(psd_path: str) -> list:
@@ -52,12 +51,15 @@ def get_pixel_layers(psd):
 temp_path = "./temp/temp.json"
 
 with gr.Blocks(title="PSD Converter") as demo:
+
     gr.Markdown(
     """
     # PSD Pipeline
     """
     )
-    path_box = gr.Textbox(label="enter path of a psd file or a folder with psd files only", value="/home/paneah/auto_clipimage_conversion/test_data/test_folder/")
+
+    path_box = gr.Textbox(label="enter the path of a psd file or a folder with psd files only", value="/home/paneah/auto_clipimage_conversion/test_data/test_folder/")
+    
     def create_json(path):
         #get the path
         global psd_path, psd_bbox
@@ -84,13 +86,33 @@ with gr.Blocks(title="PSD Converter") as demo:
         #for linux 
         os.system("sed -i '1s/^/import time \\n/' main.py")
         os.system("sed -i '1d' main.py")
+    
     button = gr.Button("Load PSD")
     button.click(create_json, inputs=path_box)
-    checkboxes, checkbox_list = create_blocks_path(temp_path)
-    button2 = gr.Button("Convert")
-    status = gr.Textbox(label="status of convert")
 
-    def composite_images_first(psd_path: str, checkbox_list: list, idx: int):
+    line_dest_box = gr.Textbox(label="enter the save path for line layers", value="/home/paneah/auto_clipimage_conversion/test_data/test_folder/")
+    color_dest_box = gr.Textbox(label="enter the save path for color layers", value="/home/paneah/auto_clipimage_conversion/test_data/test_folder/")
+
+    line_title = "select line layers"
+    color_title = "select color layers"
+    checkboxes_line, checkbox_list_line = create_blocks_path(temp_path, line_title)
+    checkboxes_color, checkbox_list_color = create_blocks_path(temp_path, color_title)
+    button2 = gr.Button("Convert")
+    status = gr.Textbox(label="status of conversion")
+
+    extraction_list = checkbox_list_line + [line_dest_box] + checkbox_list_color + [color_dest_box]
+
+    def get_file_name(psd_path: str, save_path: str) -> str:
+        file_name = ""
+        for folder in psd_path.split("/"):
+            file_name = file_name + folder.replace(".", "_") + "_"
+        file_name = file_name[1:-1]
+
+        file_path = save_path + file_name + ".png"
+        
+        return file_path
+
+    def composite_images_first(psd_path: str, checkbox_list: list, save_path: str) -> list:
         pixel_layers = get_pixel_layers_path(psd_path)
         pixel_layers = pixel_layers[::-1]
         selected_layers = [layer for layer, selected in zip(pixel_layers, checkbox_list) if selected]
@@ -100,10 +122,15 @@ with gr.Blocks(title="PSD Converter") as demo:
             composite_images_list.append(image)
         for image in composite_images_list[1:]:
             composite_images_list[0].paste(image, (0, 0), image)
-        composite_images_list[0].save(f"./temp/output{idx}.png")
-        return selected_layers
+        image = composite_images_list[0]
+
+        if save_path:
+            file_path = get_file_name(psd_path, save_path)
+            image.save(file_path)
+
+        return selected_layers, image
     
-    def composite_from_first(psd_path:str, selected_layers: list, idx: int):
+    def composite_from_first(psd_path: str, selected_layers: list, save_path: str) -> None:
         pixel_layers = get_pixel_layers_path(psd_path)
         pixel_layers = pixel_layers[::-1]
         composite_images_list = []
@@ -114,21 +141,50 @@ with gr.Blocks(title="PSD Converter") as demo:
         for image in composite_images_list[1:]:
             composite_images_list[0].paste(image, (0, 0), image)
         image = composite_images_list[0]
-        image.save(f"./temp/output{idx}.png")
 
-    def extract_layers(*checkbox_list):
-        global psd_path
+        if save_path:
+            file_path = get_file_name(psd_path, save_path)
+            image.save(file_path)
+
+        return image
+
+    def extract_layers(checkbox_list: list, save_path: str):
+        global psd_path, selected_layers
         if isinstance(psd_path, list):
-            for idx, psd_path in enumerate(psd_path):
-                if idx == 0:
-                    selected_layers = composite_images_first(psd_path, checkbox_list, idx)
-                else:
-                    composite_from_first(psd_path, selected_layers, idx)
+            images = []
+            selected_layers, image = composite_images_first(psd_path[0], checkbox_list, save_path)
+            images.append(image)
+            for psd in psd_path[1:]:
+                image = composite_from_first(psd, selected_layers, save_path)
+                images.append(image)
         elif isinstance(psd_path, str):
-            composite_images_first(psd_path, checkbox_list, 0)
-        return "convert done"
+            selected_layers, image = composite_images_first(psd_path, checkbox_list, save_path)
+            images = [image]
+        return images
+
+    def extract_both(*extraction_list):
+        line_checkbox_list = extraction_list[:len(checkbox_list_line)]
+        line_dest_box = extraction_list[len(checkbox_list_line)]
+
+        line_images = extract_layers(line_checkbox_list, line_dest_box)
+
+        color_checkbox_list = extraction_list[len(checkbox_list_line) + 1:-1]
+        color_dest_box = extraction_list[-1]
+
+        color_images = extract_layers(color_checkbox_list, save_path=None)
+
+        global psd_path 
+
+        local_psd_path = psd_path
+
+        for line_image, color_image, psd in zip(line_images, color_images, local_psd_path):
+            color_image.paste(line_image, (0, 0), line_image)
+            file_path = get_file_name(psd + "/color", color_dest_box)
+            color_image.save(file_path)
+
+        return "conversion completed"
     
-    button2.click(extract_layers, inputs=checkbox_list, outputs=status, concurrency_limit=1, show_progress=True)
+    button2.click(extract_both, inputs=extraction_list ,outputs=status, concurrency_limit=1, show_progress=True)
 
 if __name__ == "__main__":
     demo.launch()
