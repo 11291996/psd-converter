@@ -7,8 +7,8 @@ def rsync_file(file, path, destination):
     os.system(f"rsync -avh \"{os.path.join(path, file)}\" \"{destination}/\"")
 
 if __name__ == "__main__":
-    path = "/mnt/f/paneah/dataset/다온/친구끼리 이러는거 아니야/친구끼리 원고 채색 (원본)"
-    destination = "/mnt/z/onomaai/data/psd/다온/친구끼리 이러는거 아니야"
+    path = "/mnt/f/paneah/dataset/다온/제가 산건 땅이지 남자가 아닌데요/psd/채색본 psd"
+    destination = "/mnt/z/onomaai/data/psd/다온/제가 산건 땅이지 남자가 아닌데요"
 
     num_processes = multiprocessing.cpu_count()
 
