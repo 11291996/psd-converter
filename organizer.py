@@ -1,6 +1,8 @@
-path = "/mnt/z/onomaai/data/clip/다온/제가 산건 땅이지 남자가 아닌데요"
+path = "/mnt/z/onomaai/data/psd/다온/제가 산건 땅이지 남자가 아닌데요"
+new_path = "/mnt/z/onomaai/data/clip/다온/제가 산건 땅이지 남자가 아닌데요"
 
 import os 
+from tqdm import tqdm
 
 #get all the psd files in the directory and its subdirectories
 
@@ -16,10 +18,10 @@ def get_all_clip_files(path):
 
 all_clips = get_all_clip_files(path)
 
-for new_path in os.listdir(path):
-    new_path = path + "/" +  new_path
+for new_file in tqdm(os.listdir(new_path)):
+    new_dir = new_path + "/" +  new_file
     page = 1
-    for psd in all_clips:
-        if psd.split("/")[8] == new_path.split("/")[8]:
-            os.system("mv \"" + psd + "\"" + " " + "\"" + new_path + "/" + f"{page}.psd" + "\"")
+    for clip in tqdm(all_clips):
+        if clip.split("/")[8] == new_dir.split("/")[8]:
+            os.system("mv \"" + clip + "\"" + " " + "\"" + new_dir + "/" + f"{page}.clip" + "\"")
             page += 1

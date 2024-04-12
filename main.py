@@ -49,6 +49,9 @@ def get_pixel_layers(psd):
     return pixel_layers
 
 temp_path = "./temp/temp.json"
+temp_psd_path = "./temp/psd_path.txt"
+temp_line_path = "./temp/line_dest.txt"
+temp_color_path = "./temp/color_dest.txt"
 
 with gr.Blocks(title="PSD Converter") as demo:
 
@@ -58,9 +61,13 @@ with gr.Blocks(title="PSD Converter") as demo:
     """
     )
 
-    path_box = gr.Textbox(label="enter the path of a psd file or a folder with psd files only", value="/home/paneah/auto_clipimage_conversion/test_data/test_folder/")
+    with open(temp_psd_path, "r", encoding="UTF-8-sig") as f:
+        psd_path = f.read()
+        f.close()
+
+    path_box = gr.Textbox(label="enter the path of a psd file or a folder with psd files only", value=psd_path)
     
-    def create_json(path):
+    def create_json(path, line_dest, color_dest):
         #get the path
         global psd_path, psd_bbox
         if path.endswith(".psd"):
@@ -79,6 +86,15 @@ with gr.Blocks(title="PSD Converter") as demo:
                 layer_dict[layer] = None
         with open(temp_path, "w", encoding="UTF-8-sig") as f:
             f.write(json.dumps(layer_dict, ensure_ascii=False, indent=4))
+        with open(temp_psd_path, "w", encoding="UTF-8-sig") as f:
+            f.write(path)
+            f.close()
+        with open(temp_line_path, "w", encoding="UTF-8-sig") as f:
+            f.writelines(line_dest)
+            f.close()
+        with open(temp_color_path, "w", encoding="UTF-8-sig") as f:
+            f.writelines(color_dest)
+            f.close()
         #add something to this code then delete it to reload the demo
         #if os is mac os
         #os.system("sed -i '.bak' '1s/^/import time \\n/' test.py")
@@ -86,12 +102,22 @@ with gr.Blocks(title="PSD Converter") as demo:
         #for linux 
         os.system("sed -i '1s/^/import time \\n/' main.py")
         os.system("sed -i '1d' main.py")
-    
-    button = gr.Button("Load PSD")
-    button.click(create_json, inputs=path_box)
 
-    line_dest_box = gr.Textbox(label="enter the save path for line layers", value="/home/paneah/auto_clipimage_conversion/test_data/test_folder/")
-    color_dest_box = gr.Textbox(label="enter the save path for color layers", value="/home/paneah/auto_clipimage_conversion/test_data/test_folder/")
+    with open(temp_line_path, "r", encoding="UTF-8-sig") as f:
+        line_path = f.read()
+        f.close()
+    
+    with open(temp_color_path, "r", encoding="UTF-8-sig") as f:
+        color_path = f.read()
+        f.close()
+    
+    line_dest_box = gr.Textbox(label="enter the save path for line layers", value=line_path)
+    color_dest_box = gr.Textbox(label="enter the save path for color layers", value=color_path)
+
+    button = gr.Button("Load PSD")
+    button.click(create_json, inputs=[path_box, line_dest_box, color_dest_box])
+
+    
 
     line_title = "select line layers"
     color_title = "select color layers"
