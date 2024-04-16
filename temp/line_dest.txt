@@ -1,1 +1,1 @@
-﻿/home/paneah/auto_clipimage_conversion/test_data/test_folder/123123
+﻿/home/paneah/auto_clipimage_conversion/test_data/

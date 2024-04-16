@@ -48,10 +48,19 @@ def get_pixel_layers(psd):
             pixel_layers.append(layer)
     return pixel_layers
 
+def get_all_psd_files(path):
+    psd_files = []
+    for root, dirs, files in os.walk(path):
+        for file in files:
+            if file.endswith(".psd"):
+                psd_files.append(os.path.join(root, file))
+    return psd_files
+
 temp_path = "./temp/temp.json"
 temp_psd_path = "./temp/psd_path.txt"
 temp_line_path = "./temp/line_dest.txt"
 temp_color_path = "./temp/color_dest.txt"
+temp_continue_path = "./temp/continue.txt"
 
 with gr.Blocks(title="PSD Converter") as demo:
 
@@ -62,10 +71,14 @@ with gr.Blocks(title="PSD Converter") as demo:
     )
 
     with open(temp_psd_path, "r", encoding="UTF-8-sig") as f:
-        psd_path = f.read()
+        psd_paths = f.read()
         f.close()
 
-    path_box = gr.Textbox(label="enter the path of a psd file or a folder with psd files only", value=psd_path)
+    path_box = gr.Textbox(label="enter the path of a psd file or a folder with psd files only", value=psd_paths)
+
+    with open(temp_continue_path, "r", encoding="UTF-8-sig") as f:
+        continue_path = f.read()
+        f.close()
     
     def create_json(path, line_dest, color_dest):
         #get the path
@@ -74,7 +87,11 @@ with gr.Blocks(title="PSD Converter") as demo:
             psd_path = path
             psd = PSDImage.open(path)
         else:
-            psd_path = [path + item for item in os.listdir(path)]
+            psd_path = get_all_psd_files(path)
+            for idx, psd in enumerate(psd_path):
+                if psd == continue_path:
+                    psd_path = psd_path[idx:]
+                    break
             psd = PSDImage.open(psd_path[0])
         psd_bbox = psd.bbox
         layer_tree = get_layer_tree(psd)
@@ -117,7 +134,6 @@ with gr.Blocks(title="PSD Converter") as demo:
     button = gr.Button("Load PSD")
     button.click(create_json, inputs=[path_box, line_dest_box, color_dest_box])
 
-    
 
     line_title = "select line layers"
     color_title = "select color layers"
@@ -164,8 +180,13 @@ with gr.Blocks(title="PSD Converter") as demo:
             for layer in pixel_layers:
                 if layer.name == selected_layer.name and layer.parent.name == selected_layer.parent.name:
                     composite_images_list.append(layer.compose(psd_bbox))
+
+        if len(composite_images_list) == 0:
+            return "layer structure is different"
+        
         for image in composite_images_list[1:]:
             composite_images_list[0].paste(image, (0, 0), image)
+
         image = composite_images_list[0]
 
         if save_path:
@@ -181,25 +202,34 @@ with gr.Blocks(title="PSD Converter") as demo:
             selected_layers, image = composite_images_first(psd_path[0], checkbox_list, save_path)
             images.append(image)
             for psd in psd_path[1:]:
-                image = composite_from_first(psd, selected_layers, save_path)
+                result = composite_from_first(psd, selected_layers, save_path)
+                if result == "layer structure is different":
+                    message = "The layer structure is different" + f" from \"{psd}\"." \
+                    + " To continue from the file, please load the psd file again."
+                    with open(temp_continue_path, "w", encoding="UTF-8-sig") as f:
+                        f.write(psd)
+                        f.close()
+                    return images, message
                 images.append(image)
         elif isinstance(psd_path, str):
             selected_layers, image = composite_images_first(psd_path, checkbox_list, save_path)
             images = [image]
-        return images
+        with open(temp_continue_path, "w", encoding="UTF-8-sig") as f:
+            f.write("")
+            f.close()
+        return images, "conversion completed"
 
     def extract_both(*extraction_list):
+        global psd_path 
         line_checkbox_list = extraction_list[:len(checkbox_list_line)]
         line_dest_box = extraction_list[len(checkbox_list_line)]
 
-        line_images = extract_layers(line_checkbox_list, line_dest_box)
+        line_images, _ = extract_layers(line_checkbox_list, line_dest_box)
 
         color_checkbox_list = extraction_list[len(checkbox_list_line) + 1:-1]
         color_dest_box = extraction_list[-1]
 
-        color_images = extract_layers(color_checkbox_list, save_path=None)
-
-        global psd_path 
+        color_images, message = extract_layers(color_checkbox_list, save_path=None)
 
         local_psd_path = psd_path
 
@@ -208,9 +238,9 @@ with gr.Blocks(title="PSD Converter") as demo:
             file_path = get_file_name(psd + "/color", color_dest_box)
             color_image.save(file_path)
 
-        return "conversion completed"
+        return message
     
-    button2.click(extract_both, inputs=extraction_list ,outputs=status, concurrency_limit=1, show_progress=True)
+    button2.click(extract_both, inputs=extraction_list, outputs=status, concurrency_limit=1, show_progress=True)
 
 if __name__ == "__main__":
     demo.launch()
