@@ -61,6 +61,7 @@ temp_psd_path = "./temp/psd_path.txt"
 temp_line_path = "./temp/line_dest.txt"
 temp_color_path = "./temp/color_dest.txt"
 temp_continue_path = "./temp/continue.txt"
+temp_message_path = "./temp/message.txt"
 
 with gr.Blocks(title="PSD Converter") as demo:
 
@@ -119,6 +120,14 @@ with gr.Blocks(title="PSD Converter") as demo:
         #for linux 
         os.system("sed -i '1s/^/import time \\n/' main.py")
         os.system("sed -i '1d' main.py")
+        if continue_path == "":
+            with open(temp_message_path, "w", encoding="UTF-8-sig") as f:
+                f.write("psd files loaded successfully")
+                f.close()
+        if continue_path != "":
+            with open(temp_message_path, "w", encoding="UTF-8-sig") as f:
+                f.write(f"continuing from the last file \"{continue_path}\"")
+                f.close()
 
     with open(temp_line_path, "r", encoding="UTF-8-sig") as f:
         line_path = f.read()
@@ -132,18 +141,23 @@ with gr.Blocks(title="PSD Converter") as demo:
     color_dest_box = gr.Textbox(label="enter the save path for color layers", value=color_path)
 
     button = gr.Button("Load PSD")
-    button.click(create_json, inputs=[path_box, line_dest_box, color_dest_box])
-
 
     line_title = "select line layers"
     color_title = "select color layers"
     checkboxes_line, checkbox_list_line = create_blocks_path(temp_path, line_title)
     checkboxes_color, checkbox_list_color = create_blocks_path(temp_path, color_title)
     button2 = gr.Button("Convert")
-    status = gr.Textbox(label="status of conversion")
+    
+    with open(temp_message_path, "r", encoding="UTF-8-sig") as f:
+        message = f.read()
+        f.close()
+    
+    status = gr.Textbox(label="status of conversion", value=message)
+    
+    button.click(create_json, inputs=[path_box, line_dest_box, color_dest_box], outputs=status)
 
     extraction_list = checkbox_list_line + [line_dest_box] + checkbox_list_color + [color_dest_box]
-
+ 
     def get_file_name(psd_path: str, save_path: str) -> str:
         file_name = ""
         for folder in psd_path.split("/"):
