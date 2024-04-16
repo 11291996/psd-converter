@@ -1,1 +1,1 @@
-﻿psd files loaded successfully
+﻿psd files loaded successfully. please select the layers to convert from "/home/paneah/auto_clipimage_conversion/test_data/test_folder/page0001.psd"

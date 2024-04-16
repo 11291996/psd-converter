@@ -122,7 +122,7 @@ with gr.Blocks(title="PSD Converter") as demo:
         os.system("sed -i '1d' main.py")
         if continue_path == "":
             with open(temp_message_path, "w", encoding="UTF-8-sig") as f:
-                f.write("psd files loaded successfully")
+                f.write(f"psd files loaded successfully. please select the layers to convert from \"{psd_path[0]}\"")
                 f.close()
         if continue_path != "":
             with open(temp_message_path, "w", encoding="UTF-8-sig") as f:
