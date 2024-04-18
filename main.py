@@ -1,3 +1,4 @@
+#test line
 import gradio as gr
 import json
 import os
@@ -211,11 +212,12 @@ with gr.Blocks(title="PSD Converter") as demo:
 
     def extract_layers(checkbox_list: list, save_path: str):
         global psd_path, selected_layers
-        if isinstance(psd_path, list):
+        local_psd_path = psd_path
+        if isinstance(local_psd_path, list):
             images = []
-            selected_layers, image = composite_images_first(psd_path[0], checkbox_list, save_path)
+            selected_layers, image = composite_images_first(local_psd_path[0], checkbox_list, save_path)
             images.append(image)
-            for psd in psd_path[1:]:
+            for psd in local_psd_path[1:]:
                 result = composite_from_first(psd, selected_layers, save_path)
                 if result == "layer structure is different":
                     message = "The layer structure is different" + f" from \"{psd}\"." \
@@ -226,7 +228,7 @@ with gr.Blocks(title="PSD Converter") as demo:
                     return images, message
                 images.append(image)
         elif isinstance(psd_path, str):
-            selected_layers, image = composite_images_first(psd_path, checkbox_list, save_path)
+            selected_layers, image = composite_images_first(local_psd_path, checkbox_list, save_path)
             images = [image]
         with open(temp_continue_path, "w", encoding="UTF-8-sig") as f:
             f.write("")
