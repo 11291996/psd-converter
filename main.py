@@ -177,7 +177,7 @@ with gr.Blocks(title="PSD Converter") as demo:
         pixel_layers = pixel_layers[::-1]
         selected_layers = [layer for layer, selected in zip(pixel_layers, checkbox_list) if selected]
         composite_images_list = []
-        for layer in selected_layers:
+        for layer in selected_layers[::-1]:
             image = layer.compose(psd_bbox)
             composite_images_list.append(image)
         for image in composite_images_list[1:]:
@@ -194,7 +194,7 @@ with gr.Blocks(title="PSD Converter") as demo:
         pixel_layers = get_pixel_layers_path(psd_path)
         pixel_layers = pixel_layers[::-1]
         composite_images_list = []
-        for selected_layer in selected_layers:
+        for selected_layer in selected_layers[::-1]:
             for layer in pixel_layers:
                 if layer.name == selected_layer.name and layer.parent.name == selected_layer.parent.name:
                     composite_images_list.append(layer.compose(psd_bbox))
