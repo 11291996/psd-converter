@@ -255,11 +255,7 @@ with gr.Blocks(title="PSD Converter") as demo:
         elif isinstance(psd_path, str):
             local_psd_path = [psd_path]
 
-        print(f"color images {color_images}")
-        print(f"line images {line_images}")
-
         for line_image, color_image, psd in zip(line_images, color_images, local_psd_path):
-            print(f"color, line {line_image}, {color_image}")
             color_image.paste(line_image, (0, 0), line_image)
             file_path = get_file_name(psd + "/color", color_dest_box)
             color_image.save(file_path)
