@@ -126,7 +126,7 @@ with gr.Blocks(title="PSD Converter") as demo:
                 if isinstance(psd_path, list):
                     f.write(f"psd files loaded successfully. please select the layers to convert from \"{psd_path[0]}\"")
                 if isinstance(psd_path, str):
-                    f.write(f"psd file loaded successfully. please select the layers to convert from \"{psd_path}\"")
+                    f.write(f"psd file loaded successfully.")
                 f.close()
         if continue_path != "":
             with open(temp_message_path, "w", encoding="UTF-8-sig") as f:
@@ -250,7 +250,10 @@ with gr.Blocks(title="PSD Converter") as demo:
 
         color_images, message = extract_layers(color_checkbox_list, save_path=None)
 
-        local_psd_path = psd_path
+        if isinstance(psd_path, list):
+            local_psd_path = psd_path
+        elif isinstance(psd_path, str):
+            local_psd_path = [psd_path]
 
         for line_image, color_image, psd in zip(line_images, color_images, local_psd_path):
             color_image.paste(line_image, (0, 0), line_image)

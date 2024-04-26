@@ -1,1 +1,1 @@
-﻿psd files loaded successfully. please select the layers to convert from "/"
+﻿psd file loaded successfully. please select the layers to convert from "/mnt/y/ai_team/data/psd/케냐즈/캡틴 이브/2/0.psd"
