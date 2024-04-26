@@ -8,7 +8,7 @@ def rsync_file(file, path, destination):
 
 if __name__ == "__main__":
     path = path = "/mnt/f/paneah/dataset/청풍/웨폰 크리에이터"
-    destination = "/mnt/z/onomaai/data/clip/청풍/웨폰 크리에이터"
+    destination = "/mnt/z/onomaai/data/psd/다온/그 던전의 S급 시한부 영애/color"
 
     num_processes = multiprocessing.cpu_count()
 
