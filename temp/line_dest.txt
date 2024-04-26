@@ -1,1 +1,1 @@
-﻿/mnt/y/ai_team/data/page/line/
+﻿/mnt/f/paneah/dataset/processed/page/line/
