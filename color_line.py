@@ -59,7 +59,8 @@ def get_all_psd_files(path):
 
 temp_path = "./temp/temp.json"
 temp_psd_path = "./temp/psd_path.txt"
-temp_save_path = "./temp/save_dest.txt"
+temp_line_path = "./temp/line_dest.txt"
+temp_color_path = "./temp/color_dest.txt"
 temp_continue_path = "./temp/continue.txt"
 temp_message_path = "./temp/message.txt"
 
@@ -81,7 +82,7 @@ with gr.Blocks(title="PSD Converter") as demo:
         continue_path = f.read()
         f.close()
     
-    def create_json(path, save_dest):
+    def create_json(path, line_dest, color_dest):
         #get the path
         global psd_path, psd_bbox
         if path.endswith(".psd"):
@@ -107,8 +108,11 @@ with gr.Blocks(title="PSD Converter") as demo:
         with open(temp_psd_path, "w", encoding="UTF-8-sig") as f:
             f.write(path)
             f.close()
-        with open(temp_save_path, "w", encoding="UTF-8-sig") as f:
-            f.writelines(save_dest)
+        with open(temp_line_path, "w", encoding="UTF-8-sig") as f:
+            f.writelines(line_dest)
+            f.close()
+        with open(temp_color_path, "w", encoding="UTF-8-sig") as f:
+            f.writelines(color_dest)
             f.close()
         #add something to this code then delete it to reload the demo
         #if os is mac os
@@ -129,17 +133,23 @@ with gr.Blocks(title="PSD Converter") as demo:
                 f.write(f"continuing from the last file \"{continue_path}\"")
                 f.close()
 
-    with open(temp_save_path, "r", encoding="UTF-8-sig") as f:
-        save_path = f.read()
+    with open(temp_line_path, "r", encoding="UTF-8-sig") as f:
+        line_path = f.read()
         f.close()
     
-    save_dest_box = gr.Textbox(label="enter the save path for layers", value=save_path)
+    with open(temp_color_path, "r", encoding="UTF-8-sig") as f:
+        color_path = f.read()
+        f.close()
+    
+    line_dest_box = gr.Textbox(label="enter the save path for line layers", value=line_path)
+    color_dest_box = gr.Textbox(label="enter the save path for color layers", value=color_path)
 
     button = gr.Button("Load PSD")
 
-    save_title = "select layers"
-    checkboxes_save, checkbox_list_save = create_blocks_path(temp_path, save_title)
-    
+    line_title = "select line layers"
+    color_title = "select color layers"
+    checkboxes_line, checkbox_list_line = create_blocks_path(temp_path, line_title)
+    checkboxes_color, checkbox_list_color = create_blocks_path(temp_path, color_title)
     button2 = gr.Button("Convert")
     
     with open(temp_message_path, "r", encoding="UTF-8-sig") as f:
@@ -148,7 +158,9 @@ with gr.Blocks(title="PSD Converter") as demo:
     
     status = gr.Textbox(label="status of conversion", value=message)
     
-    button.click(create_json, inputs=[path_box, save_dest_box], outputs=status)
+    button.click(create_json, inputs=[path_box, line_dest_box, color_dest_box], outputs=status)
+
+    extraction_list = checkbox_list_line + [line_dest_box] + checkbox_list_color + [color_dest_box]
  
     def get_file_name(psd_path: str, save_path: str) -> str:
         file_name = ""
@@ -201,12 +213,8 @@ with gr.Blocks(title="PSD Converter") as demo:
 
         return image
 
-    def extract_layers(extraction_list: list):
+    def extract_layers(checkbox_list: list, save_path: str):
         global psd_path, selected_layers
-
-        checkbox_list = extraction_list[:len(checkbox_list_save)]
-        save_path = extraction_list[-1]
-
         local_psd_path = psd_path
         if isinstance(local_psd_path, list):
             images = []
@@ -229,10 +237,32 @@ with gr.Blocks(title="PSD Converter") as demo:
             f.write("")
             f.close()
         return images, "conversion completed"
-    
-    extraction_list = checkbox_list_save + [save_dest_box]
 
-    button2.click(extract_layers, inputs=extraction_list, outputs=status, concurrency_limit=1, show_progress=True)
+    def extract_both(*extraction_list):
+        global psd_path 
+        line_checkbox_list = extraction_list[:len(checkbox_list_line)]
+        line_dest_box = extraction_list[len(checkbox_list_line)]
+
+        line_images, _ = extract_layers(line_checkbox_list, line_dest_box)
+
+        color_checkbox_list = extraction_list[len(checkbox_list_line) + 1:-1]
+        color_dest_box = extraction_list[-1]
+
+        color_images, message = extract_layers(color_checkbox_list, save_path=None)
+
+        if isinstance(psd_path, list):
+            local_psd_path = psd_path
+        elif isinstance(psd_path, str):
+            local_psd_path = [psd_path]
+
+        for line_image, color_image, psd in zip(line_images, color_images, local_psd_path):
+            color_image.paste(line_image, (0, 0), line_image)
+            file_path = get_file_name(psd + "/color", color_dest_box)
+            color_image.save(file_path)
+
+        return message
+    
+    button2.click(extract_both, inputs=extraction_list, outputs=status, concurrency_limit=1, show_progress=True)
 
 if __name__ == "__main__":
     demo.launch()
