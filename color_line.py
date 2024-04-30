@@ -119,8 +119,8 @@ with gr.Blocks(title="PSD Converter") as demo:
         #os.system("sed -i '.bak' '1s/^/import time \\n/' test.py")
         #os.system("sed -i '.bak' '1d' test.py")
         #for linux 
-        os.system("sed -i '1s/^/import time \\n/' main.py")
-        os.system("sed -i '1d' main.py")
+        os.system("sed -i '1s/^/import time \\n/' color_line.py")
+        os.system("sed -i '1d' color_line.py")
         if continue_path == "":
             with open(temp_message_path, "w", encoding="UTF-8-sig") as f:
                 if isinstance(psd_path, list):
@@ -199,7 +199,7 @@ with gr.Blocks(title="PSD Converter") as demo:
                 if layer.name == selected_layer.name and layer.parent.name == selected_layer.parent.name:
                     composite_images_list.append(layer.compose(psd_bbox))
 
-        if len(composite_images_list) == 0:
+        if len(composite_images_list) != len(selected_layers):
             return "layer structure is different"
         
         for image in composite_images_list[1:]:
