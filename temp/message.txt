@@ -1,1 +1,1 @@
-﻿continuing from the last file "/mnt/f/paneah/dataset/캡틴 이브/10/13.psd"
+﻿psd files loaded successfully. please select the layers to convert from "/mnt/f/paneah/dataset/캡틴 이브/10/0.psd"

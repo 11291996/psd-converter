@@ -11,7 +11,7 @@ def get_layer_tree(psd: PSDImage) -> list:
     layer_tree = []
     for layer in psd._layers:
         if layer.kind == "group":
-            layer_tree.append((layer.name, get_layer_tree(layer)))
+            layer_tree.append((layer.name +"(folder)", get_layer_tree(layer)))
         else:
             layer_tree.append(layer.name)
     return layer_tree
@@ -77,12 +77,11 @@ with gr.Blocks(title="PSD Converter") as demo:
         f.close()
 
     path_box = gr.Textbox(label="enter the path of a psd file or a folder with psd files only", value=psd_paths)
-
-    with open(temp_continue_path, "r", encoding="UTF-8-sig") as f:
-        continue_path = f.read()
-        f.close()
     
     def create_json(path, line_dest, color_dest):
+        with open(temp_continue_path, "r", encoding="UTF-8-sig") as f:
+            continue_path = f.read()
+            f.close()
         #get the path
         global psd_path, psd_bbox
         if path.endswith(".psd"):
@@ -106,7 +105,7 @@ with gr.Blocks(title="PSD Converter") as demo:
         with open(temp_path, "w", encoding="UTF-8-sig") as f:
             f.write(json.dumps(layer_dict, ensure_ascii=False, indent=4))
         with open(temp_psd_path, "w", encoding="UTF-8-sig") as f:
-            f.write(path)
+            f.writelines(path)
             f.close()
         with open(temp_line_path, "w", encoding="UTF-8-sig") as f:
             f.writelines(line_dest)
@@ -119,8 +118,6 @@ with gr.Blocks(title="PSD Converter") as demo:
         #os.system("sed -i '.bak' '1s/^/import time \\n/' test.py")
         #os.system("sed -i '.bak' '1d' test.py")
         #for linux 
-        os.system("sed -i '1s/^/import time \\n/' color_line.py")
-        os.system("sed -i '1d' color_line.py")
         if continue_path == "":
             with open(temp_message_path, "w", encoding="UTF-8-sig") as f:
                 if isinstance(psd_path, list):
@@ -132,6 +129,9 @@ with gr.Blocks(title="PSD Converter") as demo:
             with open(temp_message_path, "w", encoding="UTF-8-sig") as f:
                 f.write(f"continuing from the last file \"{continue_path}\"")
                 f.close()
+        os.system("sed -i '1s/^/import time \\n/' color_line.py")
+        os.system("sed -i '1d' color_line.py")
+        
 
     with open(temp_line_path, "r", encoding="UTF-8-sig") as f:
         line_path = f.read()
@@ -178,6 +178,7 @@ with gr.Blocks(title="PSD Converter") as demo:
         selected_layers = [layer for layer, selected in zip(pixel_layers, checkbox_list) if selected]
         composite_images_list = []
         for layer in selected_layers[::-1]:
+            layer.visible = "visible"
             image = layer.compose(psd_bbox)
             composite_images_list.append(image)
         for image in composite_images_list[1:]:
@@ -197,8 +198,8 @@ with gr.Blocks(title="PSD Converter") as demo:
         for selected_layer in selected_layers[::-1]:
             for layer in pixel_layers:
                 if layer.name == selected_layer.name and layer.parent.name == selected_layer.parent.name:
+                    layer.visible = "visible"
                     composite_images_list.append(layer.compose(psd_bbox))
-
         if len(composite_images_list) != len(selected_layers):
             return "layer structure is different"
         
@@ -213,8 +214,8 @@ with gr.Blocks(title="PSD Converter") as demo:
 
         return image
 
-    def extract_layers(checkbox_list: list, save_path: str):
-        global psd_path, selected_layers
+    def extract_layers(psd_path, checkbox_list: list, save_path: str):
+        global selected_layers
         local_psd_path = psd_path
         if isinstance(local_psd_path, list):
             images = []
@@ -223,12 +224,7 @@ with gr.Blocks(title="PSD Converter") as demo:
             for psd in local_psd_path[1:]:
                 result = composite_from_first(psd, selected_layers, save_path)
                 if result == "layer structure is different":
-                    message = "The layer structure is different" + f" from \"{psd}\"." \
-                    + " To continue from the file, please load the psd file again."
-                    with open(temp_continue_path, "w", encoding="UTF-8-sig") as f:
-                        f.write(psd)
-                        f.close()
-                    return images, message
+                    return images, psd
                 images.append(result)
         elif isinstance(psd_path, str):
             selected_layers, image = composite_images_first(local_psd_path, checkbox_list, save_path)
@@ -243,18 +239,38 @@ with gr.Blocks(title="PSD Converter") as demo:
         line_checkbox_list = extraction_list[:len(checkbox_list_line)]
         line_dest_box = extraction_list[len(checkbox_list_line)]
 
-        line_images, _ = extract_layers(line_checkbox_list, line_dest_box)
+        line_images, line_limit = extract_layers(psd_path, line_checkbox_list, line_dest_box)
+        
+        if line_limit != "conversion completed":
+            line_limit_idx = psd_path.index(line_limit)
+            psd_path = psd_path[:line_limit_idx]
 
         color_checkbox_list = extraction_list[len(checkbox_list_line) + 1:-1]
         color_dest_box = extraction_list[-1]
 
-        color_images, message = extract_layers(color_checkbox_list, save_path=None)
+        color_images, color_limit = extract_layers(psd_path, color_checkbox_list, save_path=None)
+
+        make_message = lambda psd: "The layer structure is different" + f" from \"{psd}\"." \
+                        + " To continue from the file, please load the psd file again."
+        
+        def save_make_message(psd):
+            with open(temp_continue_path, "w", encoding="UTF-8-sig") as f:
+                f.write(psd)
+                f.close()   
+            return make_message(psd)
+        
+        if color_limit != "conversion completed":
+            message = save_make_message(color_limit)
+        elif color_limit == "conversion completed" and line_limit != "conversion completed":
+            message = save_make_message(line_limit)
+        else: 
+            message = "conversion completed"
 
         if isinstance(psd_path, list):
             local_psd_path = psd_path
         elif isinstance(psd_path, str):
             local_psd_path = [psd_path]
-
+        
         for line_image, color_image, psd in zip(line_images, color_images, local_psd_path):
             color_image.paste(line_image, (0, 0), line_image)
             file_path = get_file_name(psd + "/color", color_dest_box)
