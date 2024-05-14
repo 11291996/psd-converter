@@ -1,4 +1,4 @@
-#test line
+import time 
 import gradio as gr
 import json
 import os
@@ -11,7 +11,7 @@ def get_layer_tree(psd: PSDImage) -> list:
     layer_tree = []
     for layer in psd._layers:
         if layer.kind == "group":
-            layer_tree.append((layer.name +"(folder)", get_layer_tree(layer)))
+            layer_tree.append((layer.name + "(folder)", get_layer_tree(layer)))
         else:
             layer_tree.append(layer.name)
     return layer_tree
@@ -197,16 +197,16 @@ with gr.Blocks(title="PSD Converter") as demo:
 
         return selected_layers, image
     
-    def composite_from_first(psd_path: str, selected_layers: list, save_path: str) -> None:
-        pixel_layers = get_pixel_layers_path(psd_path)
+    def composite_from_first(argument_list: str):
+        pixel_layers = get_pixel_layers_path(argument_list[0])
         pixel_layers = pixel_layers[::-1]
         composite_images_list = []
-        for selected_layer in selected_layers[::-1]:
+        for selected_layer in argument_list[1][::-1]:
             for layer in pixel_layers:
                 if layer.name == selected_layer.name and layer.parent.name == selected_layer.parent.name:
                     layer.visible = "visible"
                     composite_images_list.append(layer.compose(psd_bbox))
-        if len(composite_images_list) != len(selected_layers):
+        if len(composite_images_list) != len(argument_list[1]):
             return "layer structure is different"
         
         for image in composite_images_list[1:]:
@@ -214,12 +214,29 @@ with gr.Blocks(title="PSD Converter") as demo:
 
         image = composite_images_list[0]
 
-        if save_path:
-            file_path = get_file_name(psd_path, save_path)
+        if argument_list[2]:
+            file_path = get_file_name(argument_list[0], argument_list[2])
             image.save(file_path)
 
-        return image
+        return image, argument_list[0]
 
+    #applying multiprocessing
+    import multiprocessing
+
+    def multi_process_layers(pool: multiprocessing.Pool, psd_path: list, selected_layers: list, save_path: list):
+        selected_layers_list = [selected_layers for psd in psd_path]
+        save_path_list = [save_path for psd in psd_path]
+        arg_list = zip(psd_path, selected_layers_list, save_path_list)
+        result = pool.map(composite_from_first, arg_list)
+        ordered_result = []
+        for psd in psd_path:
+            for image_tuple in result:
+                if image_tuple[1] == psd:
+                    ordered_result.append(image_tuple[0])
+                    if image_tuple[0] == "layer structure is different":
+                        return ordered_result, psd
+        return ordered_result, ""
+        
     def extract_layers(psd_path, checkbox_list: list, save_path: str):
         global selected_layers
         local_psd_path = psd_path
@@ -227,11 +244,30 @@ with gr.Blocks(title="PSD Converter") as demo:
         if isinstance(local_psd_path, list):
             selected_layers, image = composite_images_first(local_psd_path[0], checkbox_list, save_path)
             images.append(image)
-            for psd in local_psd_path[1:]:
-                result = composite_from_first(psd, selected_layers, save_path)
-                if result == "layer structure is different":
+            
+            num_process = multiprocessing.cpu_count()
+            pool = multiprocessing.Pool(processes=num_process)
+
+            start_idx = 1 
+            end_idx = start_idx + num_process
+
+            while end_idx < len(local_psd_path):
+                result, psd = multi_process_layers(pool, local_psd_path[start_idx:end_idx], selected_layers, save_path)
+                if "layer structure is different" in result:
+                    images.extend(result)
                     return images, psd
-                images.append(result)
+                elif psd == "":
+                    images.extend(result)
+                    start_idx += num_process
+                    end_idx += num_process
+                    if end_idx >= len(local_psd_path):
+                        result, psd = multi_process_layers(pool, local_psd_path[start_idx:], selected_layers, save_path)
+                        if "layer structure is different" in result:
+                            images.extend(result)
+                            return images, psd
+                        elif psd == "":
+                            images.extend(result)                   
+
         elif isinstance(psd_path, str):
             selected_layers, image = composite_images_first(local_psd_path, checkbox_list, save_path)
             images = [image]
