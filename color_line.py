@@ -212,7 +212,7 @@ with gr.Blocks(title="PSD Converter") as demo:
                     layer.visible = "visible"
                     composite_images_list.append(layer.compose(psd_bbox))
         if len(composite_images_list) != len(argument_list[1]):
-            return "layer structure is different"
+            return ("layer structure is different", "")
         
         for image in composite_images_list[1:]:
             composite_images_list[0].paste(image, (0, 0), image)
@@ -238,42 +238,37 @@ with gr.Blocks(title="PSD Converter") as demo:
             for image_tuple in result:
                 if image_tuple[1] == psd:
                     ordered_result.append(image_tuple[0])
-                    if image_tuple[0] == "layer structure is different":
-                        time.sleep(0.01) #for pipeline broken error
-                        return ordered_result, psd
-        time.sleep(0.01)
+                elif image_tuple[0] == "layer structure is different":
+                    ordered_result.append(image_tuple[0])
+                    return ordered_result, psd
         return ordered_result, ""
         
-    def extract_layers(psd_path, checkbox_list: list, save_path: str):
+    def extract_layers(psd_path, checkbox_list: list, save_path: str, global_start_idx: int):
         global selected_layers
         local_psd_path = psd_path
         images = []
         if isinstance(local_psd_path, list):
-            selected_layers, image = composite_images_first(local_psd_path[0], checkbox_list, save_path)
-            images.append(image)
+            start_idx = 0
+            if global_start_idx == 0:
+                selected_layers, image = composite_images_first(local_psd_path[0], checkbox_list, save_path)
+                images.append(image)
+                start_idx = 1
             
-            num_process = multiprocessing.cpu_count()
-            pool = multiprocessing.Pool(processes=num_process)
+            num_process = len(psd_path)
 
-            start_idx = 1 
             end_idx = start_idx + num_process
 
-            while end_idx < len(local_psd_path):
-                result, psd = multi_process_layers(pool, local_psd_path[start_idx:end_idx], selected_layers, save_path)
-                if "layer structure is different" in result:
-                    images.extend(result)
-                    return images, psd
-                elif psd == "":
-                    images.extend(result)
-                    start_idx += num_process
-                    end_idx += num_process
-                    if end_idx >= len(local_psd_path):
-                        result, psd = multi_process_layers(pool, local_psd_path[start_idx:], selected_layers, save_path)
-                        if "layer structure is different" in result:
-                            images.extend(result)
-                            return images, psd
-                        elif psd == "":
-                            images.extend(result)                   
+            pool = multiprocessing.Pool(processes=len(local_psd_path[start_idx:end_idx]))
+
+            result, psd = multi_process_layers(pool, local_psd_path[start_idx:end_idx], selected_layers, save_path)
+            
+            if "layer structure is different" in result:
+                images.extend(result[:-1])
+                print(images)
+                return images, psd
+            
+            images.extend(result)
+            print(images)                  
 
         elif isinstance(psd_path, str):
             selected_layers, image = composite_images_first(local_psd_path, checkbox_list, save_path)
@@ -281,53 +276,104 @@ with gr.Blocks(title="PSD Converter") as demo:
         with open(temp_continue_path, "w", encoding="UTF-8-sig") as f:
             f.write("")
             f.close()
+
         return images, "conversion completed"
 
     def extract_both(*extraction_list):
         global psd_path 
+        num_process = multiprocessing.cpu_count()
+        start_idx = 0
+        end_idx = start_idx + num_process
 
         try:
+            while end_idx < len(psd_path):
+                temp_psd_path = psd_path[start_idx:end_idx]
 
-            line_checkbox_list = extraction_list[:len(checkbox_list_line)]
-            line_dest_box = extraction_list[len(checkbox_list_line)]
+                line_checkbox_list = extraction_list[:len(checkbox_list_line)]
+                line_dest_box = extraction_list[len(checkbox_list_line)]
 
-            line_images, line_limit = extract_layers(psd_path, line_checkbox_list, line_dest_box)
-            
-            if line_limit != "conversion completed":
-                line_limit_idx = psd_path.index(line_limit)
-                psd_path = psd_path[:line_limit_idx]
+                line_images, line_limit = extract_layers(temp_psd_path, line_checkbox_list, line_dest_box, start_idx)
+                
+                if line_limit != "conversion completed":
+                    line_limit_idx = psd_path.index(line_limit)
+                    psd_path = psd_path[:line_limit_idx]
 
-            color_checkbox_list = extraction_list[len(checkbox_list_line) + 1:-1]
-            color_dest_box = extraction_list[-1]
+                color_checkbox_list = extraction_list[len(checkbox_list_line) + 1:-1]
+                color_dest_box = extraction_list[-1]
 
-            color_images, color_limit = extract_layers(psd_path, color_checkbox_list, save_path=None)
+                color_images, color_limit = extract_layers(temp_psd_path, color_checkbox_list, global_start_idx=start_idx, save_path=None)
 
-            make_message = lambda psd: "The layer structure is different" + f" from \"{psd}\"." \
-                            + " To continue from the file, please load the psd file again."
-            
-            def save_make_message(psd):
-                with open(temp_continue_path, "w", encoding="UTF-8-sig") as f:
-                    f.write(psd)
-                    f.close()   
-                return make_message(psd)
-            
-            if color_limit != "conversion completed":
-                message = save_make_message(color_limit)
-            elif color_limit == "conversion completed" and line_limit != "conversion completed":
-                message = save_make_message(line_limit)
-            else: 
-                message = "conversion completed"
+                make_message = lambda psd: "The layer structure is different" + f" from \"{psd}\"." \
+                                + " To continue from the file, please load the psd file again."
+                
+                def save_make_message(psd):
+                    with open(temp_continue_path, "w", encoding="UTF-8-sig") as f:
+                        f.write(psd)
+                        f.close()   
+                    return make_message(psd)
+                
+                if isinstance(psd_path, list):
+                    local_psd_path = psd_path
+                elif isinstance(psd_path, str):
+                    local_psd_path = [psd_path]
+                
+                for line_image, color_image, psd in zip(line_images, color_images, local_psd_path):
+                    color_image.paste(line_image, (0, 0), line_image)
+                    file_path = get_file_name(psd + "/color", color_dest_box)
+                    color_image.save(file_path)
+                
+                if color_limit != "conversion completed":
+                    message = save_make_message(color_limit)
+                    return message
+                elif color_limit == "conversion completed" and line_limit != "conversion completed":
+                    message = save_make_message(line_limit)
+                    return message
+                else: 
+                    message = "conversion completed"
 
-            if isinstance(psd_path, list):
-                local_psd_path = psd_path
-            elif isinstance(psd_path, str):
-                local_psd_path = [psd_path]
-            
-            for line_image, color_image, psd in zip(line_images, color_images, local_psd_path):
-                color_image.paste(line_image, (0, 0), line_image)
-                file_path = get_file_name(psd + "/color", color_dest_box)
-                color_image.save(file_path)
+                start_idx += num_process
+                end_idx += num_process
 
+                if end_idx >= len(local_psd_path):
+                    temp_psd_path = psd_path[start_idx:]
+
+                    line_checkbox_list = extraction_list[:len(checkbox_list_line)]
+                    line_dest_box = extraction_list[len(checkbox_list_line)]
+
+                    line_images, line_limit = extract_layers(temp_psd_path, line_checkbox_list, line_dest_box, start_idx)
+                    
+                    if line_limit != "conversion completed":
+                        line_limit_idx = psd_path.index(line_limit)
+                        psd_path = psd_path[:line_limit_idx]
+
+                    color_checkbox_list = extraction_list[len(checkbox_list_line) + 1:-1]
+                    color_dest_box = extraction_list[-1]
+
+                    color_images, color_limit = extract_layers(temp_psd_path, color_checkbox_list, global_start_idx=start_idx, save_path=None)
+
+                    make_message = lambda psd: "The layer structure is different" + f" from \"{psd}\"." \
+                                    + " To continue from the file, please load the psd file again."
+                    
+                    
+                    for line_image, color_image, psd in zip(line_images, color_images, local_psd_path):
+                        color_image.paste(line_image, (0, 0), line_image)
+                        file_path = get_file_name(psd + "/color", color_dest_box)
+                        color_image.save(file_path)
+                    
+                    if color_limit != "conversion completed":
+                        message = save_make_message(color_limit)
+                        return message
+                    elif color_limit == "conversion completed" and line_limit != "conversion completed":
+                        message = save_make_message(line_limit)
+                        return message
+                    else: 
+                        message = "conversion completed"
+
+                    if isinstance(psd_path, list):
+                        local_psd_path = psd_path
+                    elif isinstance(psd_path, str):
+                        local_psd_path = [psd_path]
+                    
             return message
 
         except NameError:
