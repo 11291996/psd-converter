@@ -1,8 +1,13 @@
+#testline
+
 import time 
 import gradio as gr
 import json
 import os
 from psd_tools import PSDImage
+from PIL import Image 
+
+Image.MAX_IMAGE_PIXELS = None
 
 #check layers 
 def get_layer_tree(psd: PSDImage) -> list:
@@ -234,7 +239,9 @@ with gr.Blocks(title="PSD Converter") as demo:
                 if image_tuple[1] == psd:
                     ordered_result.append(image_tuple[0])
                     if image_tuple[0] == "layer structure is different":
+                        time.sleep(0.01) #for pipeline broken error
                         return ordered_result, psd
+        time.sleep(0.01)
         return ordered_result, ""
         
     def extract_layers(psd_path, checkbox_list: list, save_path: str):
