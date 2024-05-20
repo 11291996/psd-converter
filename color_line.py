@@ -333,7 +333,7 @@ with gr.Blocks(title="PSD Converter") as demo:
                 start_idx += num_process
                 end_idx += num_process
 
-                if end_idx >= len(local_psd_path):
+                if end_idx >= len(psd_path):
                     temp_psd_path = psd_path[start_idx:]
 
                     line_checkbox_list = extraction_list[:len(checkbox_list_line)]
