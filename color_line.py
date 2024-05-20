@@ -243,16 +243,21 @@ with gr.Blocks(title="PSD Converter") as demo:
                     return ordered_result, psd
         return ordered_result, ""
         
-    def extract_layers(psd_path, checkbox_list: list, save_path: str, global_start_idx: int):
+    def extract_layers(psd_path, checkbox_list: list, save_path: str, global_start_idx: int, starting_psd: str):
         global selected_layers
         local_psd_path = psd_path
         images = []
         if isinstance(local_psd_path, list):
             start_idx = 0
+            
             if global_start_idx == 0:
-                selected_layers, image = composite_images_first(local_psd_path[0], checkbox_list, save_path)
+                selected_layers, image = composite_images_first(starting_psd, checkbox_list, save_path)
                 images.append(image)
                 start_idx = 1
+            else:
+                pixel_layers = get_pixel_layers_path(starting_psd)
+                pixel_layers = pixel_layers[::-1]
+                selected_layers = [layer for layer, selected in zip(pixel_layers, checkbox_list) if selected]
             
             num_process = len(psd_path)
 
@@ -283,23 +288,23 @@ with gr.Blocks(title="PSD Converter") as demo:
         start_idx = 0
         end_idx = start_idx + num_process
 
+        line_checkbox_list = extraction_list[:len(checkbox_list_line)]
+        line_dest_box = extraction_list[len(checkbox_list_line)]
+
+        color_checkbox_list = extraction_list[len(checkbox_list_line) + 1:-1]
+        color_dest_box = extraction_list[-1]
+
         try:
             while end_idx < len(psd_path):
                 temp_psd_path = psd_path[start_idx:end_idx]
 
-                line_checkbox_list = extraction_list[:len(checkbox_list_line)]
-                line_dest_box = extraction_list[len(checkbox_list_line)]
-
-                line_images, line_limit = extract_layers(temp_psd_path, line_checkbox_list, line_dest_box, start_idx)
+                line_images, line_limit = extract_layers(temp_psd_path, line_checkbox_list, line_dest_box, start_idx, psd_path[0])
                 
                 if line_limit != "conversion completed":
                     line_limit_idx = psd_path.index(line_limit)
                     psd_path = psd_path[:line_limit_idx]
 
-                color_checkbox_list = extraction_list[len(checkbox_list_line) + 1:-1]
-                color_dest_box = extraction_list[-1]
-
-                color_images, color_limit = extract_layers(temp_psd_path, color_checkbox_list, global_start_idx=start_idx, save_path=None)
+                color_images, color_limit = extract_layers(temp_psd_path, color_checkbox_list, global_start_idx=start_idx, save_path=None, starting_psd=psd_path[0])
 
                 make_message = lambda psd: "The layer structure is different" + f" from \"{psd}\"." \
                                 + " To continue from the file, please load the psd file again."
@@ -310,12 +315,8 @@ with gr.Blocks(title="PSD Converter") as demo:
                         f.close()   
                     return make_message(psd)
                 
-                if isinstance(psd_path, list):
-                    local_psd_path = psd_path
-                elif isinstance(psd_path, str):
-                    local_psd_path = [psd_path]
                 
-                for line_image, color_image, psd in zip(line_images, color_images, local_psd_path):
+                for line_image, color_image, psd in zip(line_images, color_images, temp_psd_path):
                     color_image.paste(line_image, (0, 0), line_image)
                     file_path = get_file_name(psd + "/color", color_dest_box)
                     color_image.save(file_path)
@@ -338,7 +339,7 @@ with gr.Blocks(title="PSD Converter") as demo:
                     line_checkbox_list = extraction_list[:len(checkbox_list_line)]
                     line_dest_box = extraction_list[len(checkbox_list_line)]
 
-                    line_images, line_limit = extract_layers(temp_psd_path, line_checkbox_list, line_dest_box, start_idx)
+                    line_images, line_limit = extract_layers(temp_psd_path, line_checkbox_list, line_dest_box, start_idx, psd_path[0])
                     
                     if line_limit != "conversion completed":
                         line_limit_idx = psd_path.index(line_limit)
@@ -347,13 +348,12 @@ with gr.Blocks(title="PSD Converter") as demo:
                     color_checkbox_list = extraction_list[len(checkbox_list_line) + 1:-1]
                     color_dest_box = extraction_list[-1]
 
-                    color_images, color_limit = extract_layers(temp_psd_path, color_checkbox_list, global_start_idx=start_idx, save_path=None)
+                    color_images, color_limit = extract_layers(temp_psd_path, color_checkbox_list, global_start_idx=start_idx, save_path=None, starting_psd=psd_path[0])
 
                     make_message = lambda psd: "The layer structure is different" + f" from \"{psd}\"." \
                                     + " To continue from the file, please load the psd file again."
-                    
-                    
-                    for line_image, color_image, psd in zip(line_images, color_images, local_psd_path):
+
+                    for line_image, color_image, psd in zip(line_images, color_images, temp_psd_path):
                         color_image.paste(line_image, (0, 0), line_image)
                         file_path = get_file_name(psd + "/color", color_dest_box)
                         color_image.save(file_path)
@@ -366,11 +366,6 @@ with gr.Blocks(title="PSD Converter") as demo:
                         return message
                     else: 
                         message = "conversion completed"
-
-                    if isinstance(psd_path, list):
-                        local_psd_path = psd_path
-                    elif isinstance(psd_path, str):
-                        local_psd_path = [psd_path]
                     
             return message
 
