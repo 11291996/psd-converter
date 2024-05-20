@@ -264,11 +264,9 @@ with gr.Blocks(title="PSD Converter") as demo:
             
             if "layer structure is different" in result:
                 images.extend(result[:-1])
-                print(images)
                 return images, psd
             
-            images.extend(result)
-            print(images)                  
+            images.extend(result)                 
 
         elif isinstance(psd_path, str):
             selected_layers, image = composite_images_first(local_psd_path, checkbox_list, save_path)
