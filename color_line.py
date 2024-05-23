@@ -209,6 +209,10 @@ with gr.Blocks(title="PSD Converter") as demo:
         for selected_layer in argument_list[1][::-1]:
             for layer in pixel_layers:
                 if layer.name == selected_layer.name and layer.parent.name == selected_layer.parent.name:
+                    print(layer.name)
+                    print(selected_layer.name)
+                    print(layer.parent.name)
+                    print(selected_layer.parent.name)
                     layer.visible = "visible"
                     composite_images_list.append(layer.compose(psd_bbox))
         if len(composite_images_list) != len(argument_list[1]):
@@ -230,9 +234,11 @@ with gr.Blocks(title="PSD Converter") as demo:
 
     def multi_process_layers(pool: multiprocessing.Pool, psd_path: list, selected_layers: list, save_path: list):
         selected_layers_list = [selected_layers for psd in psd_path]
-        save_path_list = [save_path for psd in psd_path]
+        print(selected_layers)
+        save_path_list = [save_path for _ in psd_path]
         arg_list = zip(psd_path, selected_layers_list, save_path_list)
         result = pool.map(composite_from_first, arg_list)
+        print(result)
         ordered_result = []
         for psd in psd_path:
             for image_tuple in result:
@@ -246,6 +252,7 @@ with gr.Blocks(title="PSD Converter") as demo:
     def extract_layers(psd_path, checkbox_list: list, save_path: str, global_start_idx: int, starting_psd: str):
         global selected_layers
         local_psd_path = psd_path
+        print(local_psd_path)
         images = []
         if isinstance(local_psd_path, list):
             start_idx = 0
