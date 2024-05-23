@@ -204,9 +204,6 @@ with gr.Blocks(title="PSD Converter") as demo:
         selected_line_layers = [layer for layer, checkbox in zip(pixel_layers, line_checkbox_list) if checkbox]
         selected_color_layers = [layer for layer, checkbox in zip(pixel_layers, color_checkbox_list) if checkbox]
 
-        print(f"selected line layers: {selected_line_layers}")
-        print(f"selected color layers: {selected_color_layers}")
-
         unmatching_psd = []
 
         for psd in psd_path:
@@ -223,7 +220,6 @@ with gr.Blocks(title="PSD Converter") as demo:
                         selected_psd_layers.append(layer)
                         print(color_layer.name)
             if len(selected_psd_layers) == len(selected_line_layers) + len(selected_color_layers):
-                print(selected_psd_layers[:len(selected_line_layers)][::-1])
                 for layer in selected_psd_layers[:len(selected_line_layers)][::-1]:
                     if layer == selected_psd_layers[0]:
                         line_page = layer.compose(psd_bbox)
@@ -231,7 +227,6 @@ with gr.Blocks(title="PSD Converter") as demo:
                         next_page = layer.compose(psd_bbox)
                         line_page.paste(next_page, (0, 0), next_page)
                 line_page.save(get_file_name(psd, line_dest_box))
-                print(selected_psd_layers[len(selected_line_layers):][::-1])
                 for layer in selected_psd_layers[len(selected_line_layers):][::-1]:
                     if layer == selected_psd_layers[len(selected_line_layers):][::-1][0]:
                         color_page = layer.compose(psd_bbox)
@@ -241,7 +236,6 @@ with gr.Blocks(title="PSD Converter") as demo:
                 color_page.paste(line_page, (0, 0), line_page)
                 color_page.save(get_file_name(psd, color_dest_box))
             else: 
-                print(f"{psd} does not match with {psd_path[0]}")
                 unmatching_psd.append(psd)
         
         with open(temp_comb_path, "w", encoding="UTF-8-sig") as f:
