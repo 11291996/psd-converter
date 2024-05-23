@@ -22,24 +22,33 @@ def get_layer_tree(psd: PSDImage) -> list:
             layer_tree.append(layer.name)
     return layer_tree
 
-def create_blocks(layer_list, checkbox_list: list):
+def create_blocks(layer_list, checkbox_list: list, level_list: list, level: int):
     for layer in layer_list:
         if isinstance(layer, str):
             checkbox_list.append(gr.Checkbox(label=layer))
+            level_list.append(f"layer{level}")
         elif isinstance(layer[1], list):
             with gr.Accordion(label=layer[0], open=False):
-                create_blocks(layer[1], checkbox_list)
+                checkbox_list.append(gr.Checkbox(label="select all"))
+                level_list.append(level)
+                create_blocks(layer[1], checkbox_list, level_list, level + 1)
         else:
             checkbox_list.append(gr.Checkbox(label=layer[0]))
-    return checkbox_list
+            level_list.append(f"layer{level}")
+    return checkbox_list, level_list
 
 def create_blocks_path(path, block_title: str):
     checkbox_list = []
+    level_list = []
+    level = 0
     with open(path, "r", encoding="UTF-8-sig") as f:
         dict = json.load(f)
     layer_list = [list(item) for item in dict.items()]
     with gr.Accordion(block_title, open=False) as check_boxes:
-        check_box_list = create_blocks(layer_list, checkbox_list)
+        checkbox_list.append(gr.Checkbox(label="select all"))
+        level_list.append(level)
+        check_box_list, level_list = create_blocks(layer_list, checkbox_list, level_list, level + 1)
+    print(level_list)
     return check_boxes, check_box_list
 
 def get_pixel_layers_path(psd_path: str) -> list:
@@ -125,6 +134,7 @@ with gr.Blocks(title="PSD Converter") as demo:
         psd_bbox = psd.bbox
 
         layer_tree = get_layer_tree(psd)
+        print(layer_tree)
         layer_dict = {}
         for layer in layer_tree:
             if isinstance(layer, tuple):
