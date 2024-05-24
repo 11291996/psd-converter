@@ -236,11 +236,9 @@ with gr.Blocks(title="PSD Converter") as demo:
         color_dest_box = extraction_list[-1]
 
         selected_line_layers = [layer for layer, checkbox in zip(pixel_layers, line_checkbox_list) if checkbox]
-        print(selected_line_layers)
         selected_color_layers = [layer for layer, checkbox in zip(pixel_layers, color_checkbox_list) if checkbox]
-        print(selected_color_layers)
 
-        """
+        
         unmatching_psd = []
 
         
@@ -284,7 +282,7 @@ with gr.Blocks(title="PSD Converter") as demo:
             return f"some psd files do not match with {psd_path[0]}. please reload and select the layers again"
         else:
             return "conversion successful"
-        """
+
 
     button2.click(extract_both, inputs=extraction_list, outputs=status, concurrency_limit=1, show_progress=True)
 
