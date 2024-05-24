@@ -49,7 +49,7 @@ def create_blocks_path(path, block_title: str):
         level_list.append(level)
         check_box_list, level_list = create_blocks(layer_list, checkbox_list, level_list, level + 1)
     print(level_list)
-    return check_boxes, check_box_list
+    return check_boxes, check_box_list, level_list
 
 def get_pixel_layers_path(psd_path: str) -> list:
     psd = PSDImage.open(psd_path)
@@ -81,6 +81,19 @@ def get_file_name(psd_path: str, save_path: str) -> str:
     file_path = save_path + file_name + ".png"
     
     return file_path
+
+def apply_select_all(layer_list, box_list):
+    for idx, layer, box in zip(range(len(layer_list)), layer_list, box_list):
+        if box and isinstance(layer, int):
+            for idx2, layer2, box2 in zip(range(len(layer_list[idx + 1:])), layer_list[idx + 1:], box_list[idx + 1:]):
+                if isinstance(layer2, str):
+                    if layer >= int(layer2[5]): 
+                        break
+                    box_list[idx + 1 + idx2] = not box2
+                elif isinstance(layer2, int) and layer >= layer2:
+                    break
+    new_box_list = [box for layer, box in zip(layer_list, box_list) if isinstance(layer, str)]
+    return new_box_list
 
 temp_path = "./temp/temp.json"
 temp_psd_path = "./temp/psd_path.txt"
@@ -121,7 +134,6 @@ with gr.Blocks(title="PSD Converter") as demo:
             psd = PSDImage.open(path)
         else:
             if len(comb_list) != 0:
-                print(comb_list)
                 psd_path = []
                 for psd in comb_list:
                     psd = psd.strip()
@@ -134,7 +146,6 @@ with gr.Blocks(title="PSD Converter") as demo:
         psd_bbox = psd.bbox
 
         layer_tree = get_layer_tree(psd)
-        print(layer_tree)
         layer_dict = {}
         for layer in layer_tree:
             if isinstance(layer, tuple):
@@ -185,10 +196,16 @@ with gr.Blocks(title="PSD Converter") as demo:
 
     button = gr.Button("Load PSD")
 
+    gr.Markdown(
+    """
+    if you select a folder or layer in selected all folder, the file or layer will be excluded
+    """
+    )
+    
     line_title = "select line layers"
     color_title = "select color layers"
-    checkboxes_line, checkbox_list_line = create_blocks_path(temp_path, line_title)
-    checkboxes_color, checkbox_list_color = create_blocks_path(temp_path, color_title)
+    checkboxes_line, checkbox_list_line, line_level_list = create_blocks_path(temp_path, line_title)
+    checkboxes_color, checkbox_list_color, color_level_list = create_blocks_path(temp_path, color_title)
     button2 = gr.Button("Convert")
     
     with open(temp_message_path, "r", encoding="UTF-8-sig") as f:
@@ -202,20 +219,31 @@ with gr.Blocks(title="PSD Converter") as demo:
     extraction_list = checkbox_list_line + [line_dest_box] + checkbox_list_color + [color_dest_box]
 
     def extract_both(*extraction_list):
+
+        global line_level_list
+
+        print(line_level_list)
         
         pixel_layers = get_pixel_layers_path(psd_path[0])
         pixel_layers = pixel_layers[::-1]
 
         line_checkbox_list = extraction_list[:len(checkbox_list_line)]
+        line_checkbox_list = apply_select_all(line_level_list, list(line_checkbox_list))
         line_dest_box = extraction_list[len(checkbox_list_line)]
+
         color_checkbox_list = extraction_list[len(checkbox_list_line) + 1:-1]
+        color_checkbox_list = apply_select_all(line_level_list, list(color_checkbox_list))
         color_dest_box = extraction_list[-1]
 
         selected_line_layers = [layer for layer, checkbox in zip(pixel_layers, line_checkbox_list) if checkbox]
+        print(selected_line_layers)
         selected_color_layers = [layer for layer, checkbox in zip(pixel_layers, color_checkbox_list) if checkbox]
+        print(selected_color_layers)
 
+        """
         unmatching_psd = []
 
+        
         for psd in psd_path:
             pixel_layers = get_pixel_layers_path(psd)
             selected_psd_layers = []
@@ -256,7 +284,8 @@ with gr.Blocks(title="PSD Converter") as demo:
             return f"some psd files do not match with {psd_path[0]}. please reload and select the layers again"
         else:
             return "conversion successful"
-    
+        """
+
     button2.click(extract_both, inputs=extraction_list, outputs=status, concurrency_limit=1, show_progress=True)
 
 if __name__ == "__main__":
