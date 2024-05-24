@@ -48,7 +48,6 @@ def create_blocks_path(path, block_title: str):
         checkbox_list.append(gr.Checkbox(label="select all"))
         level_list.append(level)
         check_box_list, level_list = create_blocks(layer_list, checkbox_list, level_list, level + 1)
-    print(level_list)
     return check_boxes, check_box_list, level_list
 
 def get_pixel_layers_path(psd_path: str) -> list:
