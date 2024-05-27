@@ -242,20 +242,28 @@ with gr.Blocks(title="PSD Converter") as demo:
         color_page = None
 
         for psd in psd_path:
+            print(psd)
             pixel_layers = get_pixel_layers_path(psd)
-            selected_psd_layers = []
+            selected_psd_line_layers = []
+            selected_psd_color_layers = []
             for line_layer in selected_line_layers:
                 for layer in pixel_layers:
                     if layer.name == line_layer.name and layer.parent.name == line_layer.parent.name:
-                        selected_psd_layers.append(layer)
+                        selected_psd_line_layers.append(layer)
             for color_layer in selected_color_layers:
                 for layer in pixel_layers:
                     if layer.name == color_layer.name and layer.parent.name == color_layer.parent.name:
-                        selected_psd_layers.append(layer)
-            if len(selected_psd_layers) == len(selected_line_layers) + len(selected_color_layers):
-                for layer in selected_psd_layers[:len(selected_line_layers)][::-1]:
+                        selected_psd_color_layers.append(layer)
+
+            selected_psd_line_layers = selected_psd_line_layers[::-1]
+            selected_psd_color_layers = selected_psd_color_layers[::-1]
+            
+            if len(selected_psd_line_layers) == len(selected_line_layers) and len(selected_psd_color_layers) ==  len(selected_color_layers):
+                print(selected_psd_line_layers)
+                print(selected_psd_color_layers)
+                for layer in selected_psd_line_layers:
                     layer.visible = "visible"
-                    if layer == selected_psd_layers[::-1][0]:
+                    if layer == selected_psd_line_layers[0]:
                         line_page = layer.compose(psd_bbox)
                     else:
                         if line_page:
@@ -267,9 +275,9 @@ with gr.Blocks(title="PSD Converter") as demo:
                     line_page.save(get_file_name(psd, line_dest_box))
                 else:
                     unmatching_psd.append(psd)
-                for layer in selected_psd_layers[len(selected_line_layers):][::-1]:
+                for layer in selected_psd_color_layers:
                     layer.visible = "visible"
-                    if layer == selected_psd_layers[len(selected_line_layers):][::-1][0]:
+                    if layer == selected_psd_color_layers[0]:
                         color_page = layer.compose(psd_bbox)
                     else:
                         if color_page:
@@ -284,6 +292,9 @@ with gr.Blocks(title="PSD Converter") as demo:
                     unmatching_psd.append(psd)
             else: 
                 unmatching_psd.append(psd)
+
+            line_page = None
+            color_page = None
         
         with open(temp_comb_path, "w", encoding="UTF-8-sig") as f:
             f.writelines(unmatching_psd)

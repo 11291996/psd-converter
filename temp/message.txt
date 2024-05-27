@@ -1,1 +1,1 @@
-﻿psd files loaded successfully. please select the layers to convert from "/mnt/f/paneah/dataset/캡틴 이브/2/0.psd"
+﻿psd files loaded successfully. please select the layers to convert from "/home/paneah/psd-converter/test_data/test_folder2/weapon.psd"

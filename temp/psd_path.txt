@@ -1,1 +1,1 @@
-﻿/mnt/f/paneah/dataset/캡틴 이브/
+﻿/home/paneah/psd-converter/test_data/test_folder2/

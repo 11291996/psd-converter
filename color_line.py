@@ -198,7 +198,7 @@ with gr.Blocks(title="PSD Converter") as demo:
 
         if save_path:
             file_path = get_file_name(psd_path, save_path)
-            image.save(file_path)
+            image.save(file_path) 
 
         return selected_layers, image
     
