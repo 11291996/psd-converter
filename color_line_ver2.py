@@ -119,7 +119,8 @@ with gr.Blocks(title="PSD Converter") as demo:
     def create_json(path, line_dest, color_dest):
         
         with open(temp_comb_path, "r", encoding="UTF-8-sig") as f:
-            comb_list = f.readlines()
+            comb_list = f.read()
+            comb_list = comb_list.split("\n")
             f.close()
 
         with open(temp_continue_path, "r", encoding="UTF-8-sig") as f:
@@ -133,10 +134,7 @@ with gr.Blocks(title="PSD Converter") as demo:
             psd = PSDImage.open(path)
         else:
             if len(comb_list) != 0:
-                psd_path = []
-                for psd in comb_list:
-                    psd = psd.strip()
-                    psd_path.append(psd)
+                psd_path = comb_list
             else:
                 psd_path = get_all_psd_files(path)
                 psd_path = natsort.natsorted(psd_path)
@@ -297,7 +295,8 @@ with gr.Blocks(title="PSD Converter") as demo:
             color_page = None
         
         with open(temp_comb_path, "w", encoding="UTF-8-sig") as f:
-            f.writelines(unmatching_psd)
+            for psd in unmatching_psd:
+                f.write(psd + "\n")
             f.close()
 
         if unmatching_psd != []:
