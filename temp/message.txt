@@ -1,1 +1,5 @@
+<<<<<<< HEAD
 ﻿psd files loaded successfully. please select the layers to convert from "/mnt/f/paneah/dataset/캡틴 이브/2/2.psd"
+=======
+
+>>>>>>> 8d723f8acb7dce6c8bba986d724a7338d55d6600

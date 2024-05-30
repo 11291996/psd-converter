@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ﻿/mnt/f/paneah/dataset/캡틴 이브/2/2.psd
 /mnt/f/paneah/dataset/캡틴 이브/2/4.psd
 /mnt/f/paneah/dataset/캡틴 이브/2/7.psd
@@ -158,3 +159,6 @@
 /mnt/f/paneah/dataset/캡틴 이브/35/7.psd
 /mnt/f/paneah/dataset/캡틴 이브/35/8.psd
 /mnt/f/paneah/dataset/캡틴 이브/35/14.psd
+=======
+
+>>>>>>> 8d723f8acb7dce6c8bba986d724a7338d55d6600
